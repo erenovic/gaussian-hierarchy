@@ -14,6 +14,7 @@
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("load_hierarchy", &LoadHierarchy);
+  m.def("build_hierarchy", &BuildHierarchy);
   m.def("write_hierarchy", &WriteHierarchy);
   m.def("expand_to_target", &ExpandToTarget);
   m.def("expand_to_size", &ExpandToSize);

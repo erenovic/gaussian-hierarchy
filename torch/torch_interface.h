@@ -7,6 +7,14 @@
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 LoadHierarchy(std::string filename);
 
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
+BuildHierarchy(
+torch::Tensor& positions,
+torch::Tensor& shs,
+torch::Tensor& opacities,
+torch::Tensor& scales,
+torch::Tensor& rotations);
+
 void WriteHierarchy(
 					std::string filename,
 					torch::Tensor& pos,

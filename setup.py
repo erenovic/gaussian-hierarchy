@@ -9,13 +9,14 @@
 # For inquiries contact  george.drettakis@inria.fr
 #
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CUDAExtension, BuildExtension
 import os
 os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name="gaussian_hierarchy",
+    packages=find_packages(),
     ext_modules=[
         CUDAExtension(
             name="gaussian_hierarchy._C",

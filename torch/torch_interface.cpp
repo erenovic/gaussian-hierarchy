@@ -3,6 +3,12 @@
 #include "../hierarchy_writer.h"
 #include "../traversal.h"
 #include "../runtime_switching.h"
+#include "../PointbasedKdTreeGenerator.h"
+#include "../ClusterMerger.h"
+#include "../rotation_aligner.h"
+#include "../writer.h"
+#include "../common.h"
+#include <cstring>
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 LoadHierarchy(std::string filename)
@@ -35,6 +41,74 @@ LoadHierarchy(std::string filename)
 	torch::Tensor box_tensor = torch::from_blob(boxes.data(), {N, 2, 4}, options).clone();
 	
 	return std::make_tuple(pos_tensor, shs_tensor, alpha_tensor, scale_tensor, rot_tensor, nodes_tensor, box_tensor);
+}
+
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
+BuildHierarchy(
+torch::Tensor& positions,
+torch::Tensor& shs,
+torch::Tensor& opacities,
+torch::Tensor& scales,
+torch::Tensor& rotations)
+{
+	auto pos_cpu = positions.cpu().contiguous();
+	auto shs_cpu = shs.cpu().contiguous();
+	auto opacity_cpu = opacities.cpu().contiguous();
+	auto scale_cpu = scales.cpu().contiguous();
+	auto rot_cpu = rotations.cpu().contiguous();
+
+	int P = pos_cpu.size(0);
+	std::vector<Gaussian> gaussians;
+	gaussians.reserve(P);
+
+	auto pos_ptr = pos_cpu.data_ptr<float>();
+	auto shs_ptr = shs_cpu.data_ptr<float>();
+	auto opacity_ptr = opacity_cpu.data_ptr<float>();
+	auto scale_ptr = scale_cpu.data_ptr<float>();
+	auto rot_ptr = rot_cpu.data_ptr<float>();
+
+	for (int i = 0; i < P; i++)
+	{
+		Gaussian g;
+		g.position = Eigen::Vector3f(pos_ptr[i * 3 + 0], pos_ptr[i * 3 + 1], pos_ptr[i * 3 + 2]);
+		g.opacity = opacity_ptr[i];
+		g.scale = Eigen::Vector3f(scale_ptr[i * 3 + 0], scale_ptr[i * 3 + 1], scale_ptr[i * 3 + 2]);
+		g.rotation = Eigen::Vector4f(rot_ptr[i * 4 + 0], rot_ptr[i * 4 + 1], rot_ptr[i * 4 + 2], rot_ptr[i * 4 + 3]);
+		std::memcpy(g.shs.data(), shs_ptr + i * 48, sizeof(float) * 48);
+		computeCovariance(g.scale, g.rotation, g.covariance);
+		gaussians.push_back(g);
+	}
+
+	PointbasedKdTreeGenerator generator;
+	auto root = generator.generate(gaussians);
+
+	ClusterMerger merger;
+	merger.merge(root, gaussians);
+
+	RotationAligner::align(root, gaussians);
+
+	std::vector<Eigen::Vector3f> out_positions;
+	std::vector<Eigen::Vector4f> out_rotations;
+	std::vector<Eigen::Vector3f> out_log_scales;
+	std::vector<float> out_opacities;
+	std::vector<SHs> out_shs;
+	std::vector<Node> out_nodes;
+	std::vector<Box> out_boxes;
+
+	Writer::makeHierarchy(gaussians, root, out_positions, out_rotations, out_log_scales, out_opacities, out_shs, out_nodes, out_boxes);
+
+	torch::TensorOptions options = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU);
+	torch::TensorOptions intoptions = torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU);
+
+	torch::Tensor pos_tensor = torch::from_blob(out_positions.data(), {(int)out_positions.size(), 3}, options).clone();
+	torch::Tensor shs_tensor = torch::from_blob(out_shs.data(), {(int)out_shs.size(), 16, 3}, options).clone();
+	torch::Tensor alpha_tensor = torch::from_blob(out_opacities.data(), {(int)out_opacities.size(), 1}, options).clone();
+	torch::Tensor log_scale_tensor = torch::from_blob(out_log_scales.data(), {(int)out_log_scales.size(), 3}, options).clone();
+	torch::Tensor rot_tensor = torch::from_blob(out_rotations.data(), {(int)out_rotations.size(), 4}, options).clone();
+	torch::Tensor nodes_tensor = torch::from_blob(out_nodes.data(), {(int)out_nodes.size(), 7}, intoptions).clone();
+	torch::Tensor box_tensor = torch::from_blob(out_boxes.data(), {(int)out_boxes.size(), 2, 4}, options).clone();
+
+	return std::make_tuple(pos_tensor, shs_tensor, alpha_tensor, log_scale_tensor, rot_tensor, nodes_tensor, box_tensor);
 }
 
 void WriteHierarchy(
