@@ -1,0 +1,8 @@
+[project]
+name = "gaussian_hierarchy"
+version = "0.0.0"
+description = "Gaussian hierarchy CUDA extension (workspace local build)"
+
+[build-system]
+requires = ["setuptools", "wheel", "torch", "numpy"]
+build-backend = "setuptools.build_meta"

@@ -62,8 +62,7 @@ def gaussian_hierarchy_subsampling(gaussians: Gaussians) -> Gaussians:
         log_scales,
         rotations,
         _nodes,
-        _boxes,
-    ) = _C.build_hierarchy(
+        _boxes) = _C.build_hierarchy(
         gaussians.means,
         gaussians.harmonics,
         gaussians.opacities,
