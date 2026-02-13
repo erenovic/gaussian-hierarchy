@@ -61,7 +61,7 @@ def _indices_for_depth(nodes: Tensor, depth: int) -> Tensor:
     merged_counts = nodes[depth_mask, 4].tolist()
 
     ranges = []
-    for start, leaf_count, merged_count in zip(starts, leaf_counts, merged_counts):
+    for start, leaf_count, merged_count in zip(starts, leaf_counts, merged_counts, strict=True):
         count = int(leaf_count + merged_count)
         if count == 0:
             continue
@@ -86,20 +86,17 @@ def _indices_for_level(nodes: Tensor, num_gaussian: int) -> Tensor:
     raise ValueError("num_gaussian exceeds the available Gaussians at any level.")
 
 
-def gaussian_hierarchy_subsampling(gaussians: Gaussians, num_gaussian: int) -> Gaussians:
-    (
-        positions,
-        harmonics,
-        opacities,
-        log_scales,
-        rotations,
-        _nodes,
-        _boxes) = _C.build_hierarchy(
-        gaussians.means,
-        gaussians.harmonics,
-        gaussians.opacities,
-        gaussians.scales,
-        gaussians.rotations,
+def gaussian_hierarchy_subsampling(
+    gaussians: Gaussians, num_gaussian: int, d_sh: int = 16
+) -> Gaussians:
+    squeeze = True if (gaussians.means.ndim == 3) and (gaussians.means.shape[0] == 1) else False
+    harmonics = gaussians.harmonics[..., :d_sh]
+    (positions, harmonics, opacities, log_scales, rotations, _nodes, _) = _C.build_hierarchy(
+        gaussians.means.squeeze(0) if squeeze else gaussians.means,
+        harmonics.squeeze(0) if squeeze else harmonics,
+        gaussians.opacities.squeeze(0) if squeeze else gaussians.opacities,
+        gaussians.scales.squeeze(0) if squeeze else gaussians.scales,
+        gaussians.rotations.squeeze(0) if squeeze else gaussians.rotations,
     )
 
     scales = log_scales.exp()

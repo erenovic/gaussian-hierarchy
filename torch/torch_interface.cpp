@@ -101,12 +101,15 @@ torch::Tensor& rotations)
 	torch::TensorOptions intoptions = torch::TensorOptions().dtype(torch::kInt32).device(torch::kCPU);
 
 	torch::Tensor pos_tensor = torch::from_blob(out_positions.data(), {(int)out_positions.size(), 3}, options).clone();
-	torch::Tensor shs_tensor = torch::from_blob(out_shs.data(), {(int)out_shs.size(), 16, 3}, options).clone();
+	torch::Tensor shs_tensor = torch::from_blob(out_shs.data(), {(int)out_shs.size(), 3, 16}, options).clone();
 	torch::Tensor alpha_tensor = torch::from_blob(out_opacities.data(), {(int)out_opacities.size(), 1}, options).clone();
 	torch::Tensor log_scale_tensor = torch::from_blob(out_log_scales.data(), {(int)out_log_scales.size(), 3}, options).clone();
 	torch::Tensor rot_tensor = torch::from_blob(out_rotations.data(), {(int)out_rotations.size(), 4}, options).clone();
 	torch::Tensor nodes_tensor = torch::from_blob(out_nodes.data(), {(int)out_nodes.size(), 7}, intoptions).clone();
 	torch::Tensor box_tensor = torch::from_blob(out_boxes.data(), {(int)out_boxes.size(), 2, 4}, options).clone();
+
+	// CRITICAL: Clean up the tree structure to prevent memory leak
+	deleteTree(root);
 
 	return std::make_tuple(pos_tensor, shs_tensor, alpha_tensor, log_scale_tensor, rot_tensor, nodes_tensor, box_tensor);
 }

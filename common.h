@@ -174,3 +174,24 @@ Eigen::Quaternion<T, 0> quatFromMatrix(const Eigen::Matrix<T, 3, 3, Options, 3, 
 	}
 	return q;
 }
+
+// Memory cleanup function for ExplicitTreeNode
+static void deleteTree(ExplicitTreeNode* node)
+{
+	if (node == nullptr)
+		return;
+
+	// Recursively delete all children
+	for (auto* child : node->children)
+	{
+		deleteTree(child);
+	}
+
+	// Clear vectors to free memory
+	node->children.clear();
+	node->leaf_indices.clear();
+	node->merged.clear();
+
+	// Delete the node itself
+	delete node;
+}
