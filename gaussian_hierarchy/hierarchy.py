@@ -86,9 +86,7 @@ def _indices_for_level(nodes: Tensor, num_gaussian: int) -> Tensor:
     raise ValueError("num_gaussian exceeds the available Gaussians at any level.")
 
 
-def gaussian_hierarchy_subsampling(
-    gaussians: Gaussians, num_gaussian: int, d_sh: int = 16
-) -> Gaussians:
+def gaussian_hierarchy_subsampling(gaussians: Gaussians, num_gaussian: int, d_sh: int = 16) -> Gaussians:
     squeeze = True if (gaussians.means.ndim == 3) and (gaussians.means.shape[0] == 1) else False
     harmonics = gaussians.harmonics[..., :d_sh]
     (positions, harmonics, opacities, log_scales, rotations, _nodes, _) = _C.build_hierarchy(

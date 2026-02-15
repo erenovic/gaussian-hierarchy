@@ -36,10 +36,7 @@ setup(
             ],
             extra_compile_args={
                 "cxx": [
-                    "-I"
-                    + os.path.join(
-                        os.path.dirname(os.path.abspath(__file__)), "dependencies/eigen/"
-                    )
+                    "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "dependencies/eigen/")
                 ]
             },
         )
